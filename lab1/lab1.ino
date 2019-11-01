@@ -1,36 +1,18 @@
 #include <Arduino.h>
-#include <MD_TCS230.h>
 
-#define  S0_OUT  2
-#define  S1_OUT  3
-#define  S2_OUT  4
-#define  S3_OUT  5
-
-#define R_OUT 6
-#define G_OUT 7
-#define B_OUT 8
-
-MD_TCS230 colorSensor(S2_OUT, S3_OUT, S0_OUT, S1_OUT);
+const int RGB_OUT[] = {2, 3, 4, 5, 6, 7, 8, 9};
+const int R_OUT = 10;
+const int G_OUT = 11;
+const int B_OUT = 12;
 
 void setup()
 {
     Serial.begin(115200);
     Serial.println("Started!");
-
-    sensorData whiteCalibration;
-    whiteCalibration.value[TCS230_RGB_R] = 0;
-    whiteCalibration.value[TCS230_RGB_G] = 0;
-    whiteCalibration.value[TCS230_RGB_B] = 0;
-
-    sensorData blackCalibration;
-    blackCalibration.value[TCS230_RGB_R] = 0;
-    blackCalibration.value[TCS230_RGB_G] = 0;
-    blackCalibration.value[TCS230_RGB_B] = 0;
-
-    colorSensor.begin();
-    colorSensor.setDarkCal(&blackCalibration);
-    colorSensor.setWhiteCal(&whiteCalibration);
-
+    for(int i = 0; i < 8; i++) {
+      pinMode(RGB_OUT[i], OUTPUT);
+      digitalWrite(RGB_OUT[i], LOW);
+    }
     pinMode(R_OUT, OUTPUT);
     pinMode(G_OUT, OUTPUT);
     pinMode(B_OUT, OUTPUT);
@@ -38,29 +20,38 @@ void setup()
 
 void loop() 
 {
-    colorData rgb;
-    colorSensor.read();
+    if (Serial.available() > 0) {
+      int dec = Serial.parseInt();
+      boolean bin[] = {0, 0, 0, 0, 0, 0, 0, 0};
+      
+      convertDecToBin(dec, bin);
+      set_rgb_led(dec, dec, dec);
 
-    while (!colorSensor.available());
-
-    colorSensor.getRGB(&rgb);
-    print_rgb(rgb);
-    set_rgb_led(rgb);
+      for(int i = 0; i < 8; i++) {
+        digitalWrite(RGB_OUT[i], LOW);
+      }
+      
+      for(int i = 0; i < 8; i++) {
+        if(bin[i]){
+          digitalWrite(RGB_OUT[i], HIGH);
+        }
+      }
+      delay(1000);
+    }
 }
 
-void print_rgb(colorData rgb)
-{
-  Serial.print(rgb.value[TCS230_RGB_R]);
-  Serial.print(" ");
-  Serial.print(rgb.value[TCS230_RGB_G]);
-  Serial.print(" ");
-  Serial.print(rgb.value[TCS230_RGB_B]);
-  Serial.println();
+void convertDecToBin(int dec_number, boolean bin_number[]) {
+  for(int i = 7; i >= 0; i--) {
+    if (pow(2, i) <= dec_number) {
+      dec_number = dec_number - pow(2, i);
+      bin_number[8-(i+1)] = 1;
+    }
+  }
 }
 
-void set_rgb_led(colorData rgb)
+void set_rgb_led(int r, int g, int b)
 {
-    analogWrite(R_OUT, 255 - rgb.value[TCS230_RGB_R]);
-    analogWrite(G_OUT, 255 - rgb.value[TCS230_RGB_G]);
-    analogWrite(B_OUT, 255 - rgb.value[TCS230_RGB_B]);
+    analogWrite(R_OUT, 255 - r);
+    analogWrite(G_OUT, 255 - g);
+    analogWrite(B_OUT, 255 - b);
 }
